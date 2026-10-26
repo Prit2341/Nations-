@@ -1,0 +1,674 @@
+:root {
+  color-scheme: light;
+  /* Atlas-paper UI, to sit naturally on the bright map */
+  --paper: rgba(251, 248, 241, 0.96);
+  --paper-2: #f1ece0;
+  --ink: #1f2a36;
+  --ink-soft: #5f6874;
+  --line: rgba(40, 50, 60, 0.12);
+  --navy: #1f4e79;
+  --gold: #b7791f;
+  --shadow: 0 10px 30px rgba(20, 45, 70, 0.22), 0 2px 6px rgba(20, 45, 70, 0.12);
+  --serif: Georgia, "Times New Roman", serif;
+}
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 50% 40%, #b8e2f5 0%, #9fd2ee 55%, #86c2e4 100%);
+  background-color: #9fd2ee;
+}
+#map,
+#spread,
+#gl,
+#fx,
+#names {
+  position: fixed;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+#map {
+  cursor: grab;
+}
+#spread,
+#gl,
+#fx,
+#names {
+  pointer-events: none;
+}
+#map:active {
+  cursor: grabbing;
+}
+.graticule {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.45);
+  stroke-width: 0.6;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+.coastline {
+  fill: none;
+  stroke: rgba(30, 70, 105, 0.7);
+  stroke-width: 0.8;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+/* Territory mode: the world's land as one plain surface. */
+.land {
+  fill: #eee8d8;
+  stroke: none;
+}
+/* No country borders: land reads as one continent. Outlines appear only on
+   hover, selection and battles. */
+.country {
+  stroke: none;
+  stroke-width: 0.6;
+  vector-effect: non-scaling-stroke;
+  transition: fill 0.35s linear;
+}
+.country:hover {
+  stroke: rgba(29, 43, 58, 0.45);
+  stroke-width: 1;
+}
+.country.selected {
+  stroke: #1d2b3a;
+  stroke-width: 1.5;
+}
+/* Cards: HUD, selected-country panel, end screen */
+.card, #hud {
+  box-sizing: border-box;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+  font: 13px/1.45 system-ui, sans-serif;
+}
+#hud {
+  position: fixed;
+  top: calc(16px + env(safe-area-inset-top, 0px));
+  width: min(300px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+}
+#hud {
+  left: max(16px, env(safe-area-inset-left, 0px));
+}
+.hidden {
+  display: none;
+}
+h2 {
+  margin: 0 0 8px;
+  font: 700 19px/1.2 var(--serif);
+  letter-spacing: 0.01em;
+}
+h3 {
+  margin: 14px 0 6px;
+  color: var(--ink-soft);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+p {
+  margin: 8px 0 0;
+}
+dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 3px 12px;
+  margin: 0;
+}
+dt, .muted {
+  color: var(--ink-soft);
+}
+dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+ul {
+  margin: 0;
+  padding-left: 18px;
+}
+button {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--navy);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+button:hover {
+  filter: brightness(1.1);
+}
+button.primary {
+  padding: 11px 12px;
+  font-size: 14px;
+}
+button.secondary {
+  border: 1px solid var(--line);
+  background: var(--paper-2);
+  color: var(--ink);
+}
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: none;
+}
+button.build {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 6px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  text-align: left;
+  font-weight: 600;
+}
+button.build:hover:not(:disabled) {
+  border-color: var(--gold);
+  filter: none;
+}
+button.build .muted {
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+}
+button.build > span:last-child {
+  flex: none;
+  color: var(--gold);
+  font-variant-numeric: tabular-nums;
+}
+.row {
+  display: flex;
+  gap: 8px;
+}
+.row button {
+  margin-top: 6px;
+}
+.events {
+  margin-top: 10px;
+  padding-left: 16px;
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+#overlay {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(20, 40, 60, 0.35);
+}
+#overlay.hidden {
+  display: none;
+}
+#overlay .card {
+  width: min(360px, calc(100vw - 32px));
+  text-align: center;
+}
+button.close {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  margin: 0;
+  padding: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: 20px;
+  line-height: 1;
+}
+button.close:hover {
+  background: var(--paper-2);
+  filter: none;
+}
+.tiles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 14px;
+}
+.tile {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--paper-2);
+}
+.tile span {
+  color: var(--ink-soft);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+.tile strong {
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+.borders summary {
+  cursor: pointer;
+  color: var(--ink-soft);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.borders .count {
+  margin-left: 4px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--paper-2);
+  color: var(--ink);
+}
+/* Map effects: boats, battle rings, capture flashes */
+.boat line {
+  stroke: #f0ead6;
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  opacity: 0.5;
+  vector-effect: non-scaling-stroke;
+}
+.boat circle {
+  r: calc(3px * var(--boat-scale, 1));
+  fill: #f0ead6;
+  stroke: #1b3a5c;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.boat.mine circle {
+  fill: #ffd166;
+}
+.battle circle {
+  fill: none;
+  stroke-width: 3.5;
+}
+.battle .track {
+  fill: rgba(15, 30, 48, 0.55);
+  stroke: rgba(240, 234, 214, 0.35);
+}
+.battle .progress {
+  stroke: #ff4d4d;
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.15s linear;
+}
+.battle.mine .progress {
+  stroke: #ffd166;
+}
+.battle text {
+  fill: #fff;
+  font: 600 11px system-ui, sans-serif;
+  text-anchor: middle;
+  paint-order: stroke;
+  stroke: rgba(15, 30, 48, 0.9);
+  stroke-width: 3px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .country, .battle .progress {
+    transition: none;
+  }
+}
+.battles-list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.battles-list li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 8px;
+  font-size: 12px;
+}
+.battles-list li > span:nth-child(2) {
+  font-variant-numeric: tabular-nums;
+}
+.battles-list .bar {
+  grid-column: 1 / -1;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--paper-2);
+  overflow: hidden;
+}
+.battles-list .bar > span {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: var(--gold);
+  transition: width 0.15s linear;
+}
+/* Phones: HUD across the top, panel as a bottom sheet */
+@media (max-width: 640px) {
+  #hud {
+    right: max(12px, env(safe-area-inset-right, 0px));
+    left: max(12px, env(safe-area-inset-left, 0px));
+    width: auto;
+    max-height: 34vh;
+  }
+}
+.placing {
+  padding: 8px 10px;
+  border: 1px dashed var(--gold);
+  border-radius: 8px;
+  background: rgba(183, 121, 31, 0.08);
+}
+kbd {
+  padding: 0 4px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: #fff;
+  font: 11px system-ui, sans-serif;
+}
+#hud button.stop {
+  margin-left: 6px;
+  padding: 1px 8px;
+  font: inherit;
+  font-size: 11.5px;
+  color: inherit;
+  background: transparent;
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.25));
+  border-radius: 6px;
+  cursor: pointer;
+}
+/* Market panel: sell and buy food, borrow and lend gold. The nation panel (right-click a nation) shares its look. */
+#market,
+#nation {
+  position: fixed;
+  top: calc(16px + env(safe-area-inset-top, 0px));
+  right: max(16px, env(safe-area-inset-right, 0px));
+  z-index: 5;
+  box-sizing: border-box;
+  width: min(340px, calc(100vw - 32px));
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+  font: 13px/1.4 system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+#market.hidden,
+#nation.hidden {
+  display: none;
+}
+#market p,
+#nation p {
+  margin: 4px 0;
+}
+#market h3,
+#nation h3 {
+  margin: 12px 0 4px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+}
+#market button,
+#nation button {
+  margin: 0;
+  padding: 5px 9px;
+  font-size: 12px;
+  width: auto;
+}
+#market .m-head,
+#nation .m-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+#market .m-tabs,
+#nation .m-tabs {
+  display: flex;
+  gap: 4px;
+}
+#market .m-tabs button,
+#nation .m-tabs button {
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid var(--line);
+}
+#market .m-tabs button.on,
+#nation .m-tabs button.on {
+  color: #fff;
+  background: var(--navy);
+}
+#market .m-btns,
+#nation .m-btns {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0;
+}
+#market .m-row,
+#nation .m-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+}
+#market .m-row > span:first-child,
+#nation .m-row > span:first-child {
+  flex: 1 1 100%;
+}
+#market input[type="number"],
+#nation input[type="number"],
+#market select,
+#nation select {
+  flex: 1 1 70px;
+  min-width: 0;
+  padding: 4px 6px;
+  font: inherit;
+  color: var(--ink);
+  background: var(--paper-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+#market label,
+#nation label {
+  display: flex;
+  flex: 1 1 120px;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+#market label input[type="number"],
+#nation label input[type="number"] {
+  flex: none;
+}
+#market .m-check,
+#nation .m-check {
+  flex-direction: row;
+  align-items: center;
+  color: var(--ink);
+}
+#market .m-msg,
+#nation .m-msg {
+  min-height: 1.4em;
+  color: var(--gold);
+  font-weight: 600;
+}
+#nation {
+  top: 16px;
+  right: auto;
+  z-index: 6;
+  max-height: calc(100vh - 120px);
+}
+#bar .market-open {
+  cursor: pointer;
+}
+/* Bottom stats bar: icons instead of names (hover for the name) */
+#bar {
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  position: fixed;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px 18px;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  padding: 9px 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+  font: 13px/1.2 system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+#bar .stat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+#bar .stat svg {
+  width: 19px;
+  height: 19px;
+  flex: none;
+  fill: none;
+  stroke: var(--navy);
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+#bar.hidden {
+  display: none;
+}
+#bar .row {
+  display: contents;
+}
+#bar .ctl {
+  position: relative;
+  cursor: default;
+}
+#bar .ctl input[type="range"] {
+  width: 110px;
+  margin: 0;
+}
+#bar .upgrade {
+  position: relative;
+  padding: 3px 10px;
+  font: inherit;
+  color: var(--gold);
+  background: transparent;
+  border: 1px solid var(--gold);
+  border-radius: 8px;
+  cursor: pointer;
+}
+#bar .upgrade svg {
+  stroke: var(--gold);
+}
+#bar .upgrade:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+/* Hover tips above the control */
+#bar .tip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: min(280px, 80vw);
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: pre-line;
+  text-align: left;
+  pointer-events: none;
+}
+#bar .ctl:hover .tip {
+  display: block;
+}
+#bar select {
+  font: inherit;
+  color: inherit;
+  padding: 2px 4px;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+#bar .pause {
+  display: flex;
+  padding: 3px 8px;
+  color: inherit;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+}
+#bar .pause svg {
+  fill: var(--navy);
+  stroke: none;
+}
+#bar .pause.on {
+  background: var(--navy);
+}
+#bar .pause.on svg {
+  fill: #fff;
+}
+
+/* Rival readout: strength of both sides, shown while hovering another nation */
+#rival {
+  position: fixed;
+  z-index: 7;
+  box-sizing: border-box;
+  max-width: 300px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+  font: 12px/1.45 system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+#rival.hidden {
+  display: none;
+}
+#rival .muted {
+  color: var(--ink-soft);
+}
+#rival .verdict {
+  margin-top: 4px;
+  font-weight: 700;
+}
+#rival .verdict.win {
+  color: #1f8a4c;
+}
+#rival .verdict.lose {
+  color: #c0392b;
+}
+#rival .verdict.even {
+  color: var(--gold);
+}
